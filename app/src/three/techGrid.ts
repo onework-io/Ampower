@@ -40,21 +40,21 @@ export interface TechGridOptions {
 }
 
 /**
- * 預設為淺色產品展示風：淺灰地坪配藍紫色格線，往遠處淡出。
- * 格線密度刻意接近單一層級，粗格只做很輕微的層次，避免出現明顯的方格區塊感。
+ * 深色底配青藍格線。
+ *
+ * 註：自訂 shader 的輸出會一起走 EffectComposer 的 ACES 色調映射（曝光 0.85），
+ * 顏色會被壓暗、彩度降低，調色時要把這件事算進去。
  */
 export const DEFAULT_TECH_GRID: TechGridOptions = {
-  size: 600,
+  size: 420,
   center: new Vector3(0, 0, 0),
-  minor: 2,
+  minor: 1,
   major: 10,
-  fadeStart: 30,
-  fadeEnd: 200,
-  // 自訂 shader 的輸出會一起走 EffectComposer 的 ACES 色調映射（曝光 0.85），
-  // 顏色會被壓暗、彩度降低，因此這裡刻意取比目標更飽和的值來補償。
-  color: '#4f63e8',
-  majorColor: '#3a4fdd',
-  baseColor: '#e6e8ec',
+  fadeStart: 26,
+  fadeEnd: 120,
+  color: '#4cc2ff',
+  majorColor: '#7fd8ff',
+  baseColor: '#0b1220',
 }
 
 const VERT = /* glsl */ `
@@ -99,15 +99,16 @@ const FRAG = /* glsl */ `
   }
 
   void main() {
-    float minorLine = grid(vGrid, uMinor, 1.1);
-    float majorLine = grid(vGrid, uMajor, 1.5);
+    float minorLine = grid(vGrid, uMinor, 1.0);
+    float majorLine = grid(vGrid, uMajor, 1.6);
 
     // 徑向淡出：遠處溶進背景，避免出現平面的硬邊
     float dist = length(vGrid - vCenter);
     float fade = 1.0 - smoothstep(uFadeStart, uFadeEnd, dist);
+    fade *= fade; // 再壓一次，中央附近才夠明確
 
     vec3 color = mix(uColor, uMajorColor, majorLine);
-    float alpha = max(minorLine * 0.78, majorLine * 1.0) * fade * uOpacity;
+    float alpha = max(minorLine * 0.38, majorLine * 0.95) * fade * uOpacity;
     if (alpha < 0.002) discard;
 
     gl_FragColor = vec4(color, alpha);

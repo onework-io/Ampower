@@ -6,7 +6,6 @@ import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js'
 import { createPlantEnvironment } from './plantEnvironment'
-import { createBackdrop } from './backdrop'
 
 /**
  * three.js 場景骨架：renderer / camera / controls / 光照 / 後製 / resize / dispose。
@@ -34,7 +33,6 @@ export class SceneKit {
   private dirLight: THREE.DirectionalLight
   private pmrem: THREE.PMREMGenerator
   private envTex: THREE.Texture
-  private backdrop: THREE.Texture
   private raf = 0
   /** 使用者是否已用滑鼠操作過相機；操作後 resize 就不再自動重新框景 */
   private userMoved = false
@@ -45,8 +43,7 @@ export class SceneKit {
     const w = Math.max(host.clientWidth, 1)
     const h = Math.max(host.clientHeight, 1)
 
-    this.backdrop = createBackdrop()
-    this.scene.background = this.backdrop
+    this.scene.background = new THREE.Color(0x0e1626)
     this.scene.add(this.root)
 
     this.camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000)
@@ -233,7 +230,6 @@ export class SceneKit {
     this.controls.dispose()
     this.composer.dispose()
     this.envTex.dispose()
-    this.backdrop.dispose()
     this.pmrem.dispose()
     this.renderer.dispose()
     this.renderer.domElement.remove()
