@@ -77,6 +77,16 @@ function onPointerUp(e: PointerEvent) {
         >
           外牆透視
         </button>
+        <button
+          class="toolbar__btn"
+          :class="{ 'is-on': store.roomFloor }"
+          :aria-pressed="store.roomFloor"
+          :disabled="shellHidden"
+          title="機房的實體地板；關閉時格線地坪會透到建物內部"
+          @click="store.roomFloor = !store.roomFloor"
+        >
+          機房地板
+        </button>
         <span class="toolbar__sep" />
         <button class="toolbar__btn" @click="resetView()">重設視角</button>
       </div>

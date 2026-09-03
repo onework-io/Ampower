@@ -14,6 +14,11 @@ export const useViewerStore = defineStore('viewer', () => {
   const shellGhost = ref(false)
   /** 由甘特圖的進度游標寫入：只顯示已安裝的構件；null 表示不過濾 */
   const progressFilter = ref<Set<string> | null>(null)
+  /**
+   * 機房地板（貼在地面的實心平板）。
+   * 預設關閉，讓格線地坪能透到建物內部；需要看實體地板時再打開。
+   */
+  const roomFloor = ref(false)
   const status = ref<Record<string, PartStatus>>(
     Object.fromEntries(PARTS.map((p) => [p.id, 'pending' as PartStatus])),
   )
@@ -81,6 +86,7 @@ export const useViewerStore = defineStore('viewer', () => {
     explodeFactor,
     shellGhost,
     progressFilter,
+    roomFloor,
     status,
     loadedCount,
     total,

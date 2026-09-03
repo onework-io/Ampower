@@ -27,6 +27,8 @@ export function useViewer(host: Ref<HTMLElement | null>) {
   let registry: PartRegistry | null = null
   let poiLayer: PoiLayer | null = null
   let techGrid: TechGrid | null = null
+  /** 貼在地面高度的平板（機房地板、地坪本身），可獨立於構件顯示切換 */
+  let groundSlabs: Object3D[] = []
   let currentFactor = 0
   const scratch = new Vector3()
 
@@ -106,12 +108,45 @@ export function useViewer(host: Ref<HTMLElement | null>) {
       if ((o as { isMesh?: boolean }).isMesh) o.visible = false
     })
 
+    // 機房裡還有一片貼在地面的實心平板（機房.glb 的 Concrete 面），
+    // 會蓋住格線讓建物內部變成一塊淺灰色。收集起來交給切換鈕控制。
+    groundSlabs = collectGroundSlabs(loaded, top, toModel)
+    setGroundSlabsVisible(store.roomFloor)
+
     // 格線以設備群為中心淡出，而非以 170m 地坪自身的中心。
     // framingBox 傳入 root 時回傳的就是模型座標，不需要再換算。
     const center = framingBox(loaded, kit.root).getCenter(new Vector3())
 
     techGrid = createTechGrid(top, { center })
     ground.object.add(techGrid.group)
+  }
+
+  /**
+   * 找出貼在地面高度的平板：厚度趨近 0、且上緣落在地坪高程附近。
+   * 用幾何條件判斷而非寫死材質或節點名稱，模型改版時比較不會失效。
+   */
+  function collectGroundSlabs(
+    loaded: LoadedPart[],
+    groundTop: number,
+    toModel: Vector3,
+  ): Object3D[] {
+    const found: Object3D[] = []
+    for (const { def, object } of loaded) {
+      if (def.kind === 'site') continue // 地坪本身已整個隱藏
+      object.traverse((o) => {
+        if (!(o as { isMesh?: boolean }).isMesh) return
+        const b = new Box3().setFromObject(o).translate(toModel)
+        const thickness = b.max.y - b.min.y
+        const onGround = Math.abs(b.max.y - groundTop) < 0.3
+        const large = b.max.x - b.min.x > 2 && b.max.z - b.min.z > 2
+        if (thickness < 0.05 && onGround && large) found.push(o)
+      })
+    }
+    return found
+  }
+
+  function setGroundSlabsVisible(on: boolean) {
+    for (const o of groundSlabs) o.visible = on
   }
 
   function applyAll() {
@@ -192,6 +227,11 @@ export function useViewer(host: Ref<HTMLElement | null>) {
   )
 
   watch(
+    () => store.roomFloor,
+    (on) => setGroundSlabsVisible(on),
+  )
+
+  watch(
     () => poiStore.pois,
     (list) => poiLayer?.sync(list),
     { deep: true },
@@ -211,6 +251,7 @@ export function useViewer(host: Ref<HTMLElement | null>) {
     poiLayer = null
     techGrid?.dispose()
     techGrid = null
+    groundSlabs = []
     registry?.dispose()
     kit?.dispose()
     kit = null
