@@ -117,6 +117,9 @@ const FRAG = /* glsl */ `
 
 export interface TechGrid {
   group: Group
+  /** 接陰影用的底板。若場上另有實體地坪，應該關掉這片避免兩層共面 */
+  base: Mesh
+  lines: Mesh
   dispose(): void
 }
 
@@ -160,13 +163,15 @@ export function createTechGrid(y: number, options: Partial<TechGridOptions> = {}
   })
   const lines = new Mesh(geometry, gridMaterial)
   lines.rotation.x = -Math.PI / 2
-  // 抬高 1 公釐避免與底層 z-fighting
-  lines.position.set(opt.center.x, y + 0.001, opt.center.z)
+  // 抬高 1 公分：既避開自己的底板，也讓使用者把原本的地坪 GLB 開回來時不會共面
+  lines.position.set(opt.center.x, y + 0.01, opt.center.z)
   lines.renderOrder = 1
   group.add(lines)
 
   return {
     group,
+    base,
+    lines,
     dispose() {
       geometry.dispose()
       baseMaterial.dispose()

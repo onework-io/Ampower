@@ -29,6 +29,7 @@ export function useViewer(host: Ref<HTMLElement | null>) {
   let techGrid: TechGrid | null = null
   /** 貼在地面高度的平板（機房地板、地坪本身），可獨立於構件顯示切換 */
   let groundSlabs: Object3D[] = []
+  let groundPartId: string | null = null
   let currentFactor = 0
   const scratch = new Vector3()
 
@@ -88,8 +89,10 @@ export function useViewer(host: Ref<HTMLElement | null>) {
   /**
    * 以科技風格線取代 ground.glb 的淺灰平面。
    *
-   * 格線掛在原本地坪構件底下，側欄「地坪」的顯示切換因此照舊有效；
-   * 地坪屬於 site，不參與爆炸與進度過濾，也不影響框景。
+   * 格線直接掛在場景 root 之下，**不掛在地坪構件底下**——那樣會讓格線跟著
+   * 側欄「地坪」的勾選一起消失。地坪的 GLB 預設不顯示（見 stores/viewer 的
+   * 初始 visible 集合），格線則恆常存在。
+   *
    * 必須在 PartRegistry 建立之後才加入，否則自訂 shader 材質會被
    * 隔離用的透明度處理當成一般材質複製與改寫。
    */
@@ -103,11 +106,6 @@ export function useViewer(host: Ref<HTMLElement | null>) {
     const groundBox = new Box3().setFromObject(ground.object).translate(toModel)
     const top = groundBox.max.y
 
-    // 原本的淺灰平面整個關掉，只留下格線
-    ground.object.traverse((o) => {
-      if ((o as { isMesh?: boolean }).isMesh) o.visible = false
-    })
-
     // 機房裡還有一片貼在地面的實心平板（機房.glb 的 Concrete 面），
     // 會蓋住格線讓建物內部變成一塊淺灰色。收集起來交給切換鈕控制。
     groundSlabs = collectGroundSlabs(loaded, top, toModel)
@@ -117,8 +115,10 @@ export function useViewer(host: Ref<HTMLElement | null>) {
     // framingBox 傳入 root 時回傳的就是模型座標，不需要再換算。
     const center = framingBox(loaded, kit.root).getCenter(new Vector3())
 
+    groundPartId = ground.def.id
     techGrid = createTechGrid(top, { center })
-    ground.object.add(techGrid.group)
+    kit.root.add(techGrid.group)
+    syncGridBase()
   }
 
   /**
@@ -147,6 +147,15 @@ export function useViewer(host: Ref<HTMLElement | null>) {
 
   function setGroundSlabsVisible(on: boolean) {
     for (const o of groundSlabs) o.visible = on
+  }
+
+  /**
+   * 格線底板只是用來接陰影的。使用者把原本的地坪 GLB 開回來時要關掉它，
+   * 否則兩片共面的平板會 z-fighting 出現條紋；地坪本身就會接陰影。
+   */
+  function syncGridBase() {
+    if (!techGrid || !groundPartId) return
+    techGrid.base.visible = !store.isVisible(groundPartId)
   }
 
   function applyAll() {
@@ -207,6 +216,7 @@ export function useViewer(host: Ref<HTMLElement | null>) {
     () => {
       if (!registry) return
       for (const p of PARTS) registry.setVisible(p.id, store.isVisible(p.id))
+      syncGridBase()
     },
     { deep: true },
   )

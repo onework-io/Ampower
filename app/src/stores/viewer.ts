@@ -5,8 +5,12 @@ import { GROUP_ORDER, PARTS, type PartDef } from '@/data/parts'
 export type PartStatus = 'pending' | 'loading' | 'ready' | 'failed'
 
 export const useViewerStore = defineStore('viewer', () => {
-  /** 使用者勾選顯示的構件 */
-  const visible = ref(new Set<string>(PARTS.map((p) => p.id)))
+  /**
+   * 使用者勾選顯示的構件。
+   * 地坪（site）預設不顯示——它的淺灰平面已由格線地坪取代，
+   * 但仍留在清單裡供需要時開回來。格線本身不受這個集合影響。
+   */
+  const visible = ref(new Set<string>(PARTS.filter((p) => p.kind !== 'site').map((p) => p.id)))
   const isolatedId = ref<string | null>(null)
   /** 爆炸係數 0–1 的目標值；實際位移由 render loop 平滑趨近 */
   const explodeFactor = ref(0)
