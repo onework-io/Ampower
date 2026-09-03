@@ -14,11 +14,17 @@ npm test         # vitest
 
 ## 模型來源
 
-`public/models` 是指向專案根目錄 `3D/` 的 symlink，模型更新會自動反映，
+21 個 GLB 共用同一組場域座標（公尺、Y-up），以原點載入即自動組裝。
+
+`public/models` 是指向 `3D-draco/` 的 symlink——那是 `3D/` 原始模型經
+`scripts/compress-models.sh` 壓縮後的版本（幾何 Draco、貼圖降到 1024 並轉 WebP）。
 build 時 Vite 會把實體檔案複製進 `dist/models/`。
 
-21 個 GLB 共用同一組場域座標（公尺、Y-up），以原點載入即自動組裝。
-未使用 Draco 壓縮，因此不需要 `DRACOLoader`。
+**原始模型保留在 `3D/`**：壓縮對位置與法線是有損量化、貼圖也被降尺寸，
+再編修時應以原始檔為準。模型更新後重跑一次腳本即可。
+
+解碼器放在 `public/draco/`（只留 glTF 用的解碼檔，不含編碼器），
+`DRACOLoader` 以**相對路徑** `draco/` 載入，網站部署在子路徑時才找得到。
 
 ## 結構
 

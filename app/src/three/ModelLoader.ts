@@ -1,5 +1,6 @@
 import { Box3, Group, Object3D, Vector3 } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { PARTS, modelUrl, type PartDef } from '@/data/parts'
 import { applyMaterialProfiles } from './materials'
 import { applyUnitAlignment } from './alignment'
@@ -66,13 +67,25 @@ export function centerOffset(box: Box3): Vector3 {
  * 依 PARTS 順序（檔案由小到大）逐一載入，邊載邊回報。
  * 單一檔案失敗不阻斷其他檔案。
  */
+/**
+ * 建立掛好 Draco 解碼器的載入器。
+ *
+ * 模型以 scripts/compress-models.sh 壓縮過（幾何 Draco、貼圖 WebP），
+ * 解碼器路徑用相對路徑，網站部署在子路徑（GitHub Pages 的 /Ampower/）時才找得到。
+ * 解碼器是 WASM，同一個實例可重複使用，載完全部再釋放。
+ */
+function createLoader(): { loader: GLTFLoader; dispose: () => void } {
+  const draco = new DRACOLoader().setDecoderPath('draco/')
+  const loader = new GLTFLoader().setDRACOLoader(draco)
+  return { loader, dispose: () => draco.dispose() }
+}
+
 export async function loadParts(
   root: Group,
   onProgress: (p: LoadProgress) => void,
   parts: PartDef[] = PARTS,
 ): Promise<LoadedPart[]> {
-  // 模型未使用 Draco 壓縮（Blender glTF I/O 直出），不需掛 DRACOLoader
-  const loader = new GLTFLoader()
+  const { loader, dispose } = createLoader()
   const loaded: LoadedPart[] = []
   let done = 0
 
@@ -98,5 +111,6 @@ export async function loadParts(
     }
   }
 
+  dispose()
   return loaded
 }

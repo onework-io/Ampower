@@ -1,0 +1,68 @@
+name: 部署展示網頁
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署，但不取消進行中的那個，避免半途中斷留下壞掉的站
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: 安裝相依套件
+        working-directory: app
+        run: npm ci
+
+      - name: 單元測試
+        working-directory: app
+        run: npm test
+
+      - name: 建置
+        working-directory: app
+        run: npm run build
+
+      # app/public/models 是指向 ../../3D 的 symlink。
+      # 若 Vite 沒有把實體檔案複製進 dist，網站會照常上線但一個模型都載不到，
+      # 而且畫面上只會顯示載入失敗，很難聯想到是 symlink 的問題，所以在這裡擋下來。
+      - name: 確認模型已複製進 dist
+        working-directory: app
+        run: |
+          count=$(find dist/models -name '*.glb' | wc -l | tr -d ' ')
+          echo "dist/models 內有 $count 個 GLB"
+          if [ "$count" -ne 21 ]; then
+            echo "::error::預期 21 個 GLB，實際 $count 個——public/models 的 symlink 可能沒有被解開"
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

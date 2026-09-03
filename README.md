@@ -5,7 +5,9 @@ RZ2000 柴油發電機房的 three.js 檢視器，左側為 3D 模型、右側�
 | 目錄 | 內容 |
 |---|---|
 | `app/` | Vue 3 + Vite + TypeScript 應用程式（詳見 [app/README.md](app/README.md)） |
-| `3D/` | 21 個 GLB 模型，共用同一組場域座標 |
+| `3D/` | 21 個 GLB 原始模型，共用同一組場域座標 |
+| `3D-draco/` | 壓縮後的模型（網頁實際載入的版本） |
+| `scripts/` | `compress-models.sh` 產生 `3D-draco/` |
 | `process/` | 來源資料：發電機安裝 24 步驟 |
 | `docs/superpowers/specs/` | 設計文件 |
 
@@ -29,9 +31,18 @@ npm install
 npm run dev
 ```
 
-`app/public/models` 是指向 `3D/` 的 symlink，clone 後即可使用。
+`app/public/models` 是指向 `3D-draco/` 的 symlink，clone 後即可使用。
+原始模型在 `3D/`，壓縮版由 `bash scripts/compress-models.sh` 產生。
 
 ```bash
 npm test     # 217 個單元測試
 npm run build
 ```
+
+## 展示網頁
+
+推送到 `main` 會由 GitHub Actions 自動建置並部署到 GitHub Pages：
+<https://onework-io.github.io/Ampower/>
+
+⚠️ **這個網站是公開的**，即使庫本身是私有的。GitHub Pages 的存取控制需要
+Enterprise Cloud 方案。
