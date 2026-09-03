@@ -249,6 +249,19 @@ export const useScheduleStore = defineStore('schedule', () => {
     return new Date(y, (m ?? 1) - 1, d ?? 1)
   })
 
+  /**
+   * 游標當天正在施作的步驟。
+   *
+   * 判定用「工期區間與當天 [D, D+1) 有重疊」而非 start <= D < finish——
+   * 採用 PERT 期望工期後起訖都是小數，用後者會讓第 4.3 天才開工的項目
+   * 在第 4 天整天都不算施作中。
+   */
+  const activeSteps = computed<GanttRow[]>(() => {
+    const d = cursorDay.value
+    if (d === null) return []
+    return rows.value.filter((r) => r.task.start < d + 1 && r.task.finish > d)
+  })
+
   /** 游標當下已完工的步驟 id；模擬關閉時為 null */
   const completedStepIds = computed(() =>
     cursorDay.value === null ? null : completedAt(schedule.value, cursorDay.value),
@@ -349,6 +362,7 @@ export const useScheduleStore = defineStore('schedule', () => {
     schedule,
     projectDays,
     rows,
+    activeSteps,
     wbsGroups,
     plannedEarly,
     plannedLate,

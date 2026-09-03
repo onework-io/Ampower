@@ -7,6 +7,7 @@ import { SHELL_PART_ID } from '@/data/parts'
 import ExplodeSlider from './ExplodeSlider.vue'
 import LoadProgress from './LoadProgress.vue'
 import PoiCard from './PoiCard.vue'
+import StepSubtitle from './StepSubtitle.vue'
 
 const host = ref<HTMLDivElement | null>(null)
 const { fatal, resetView, placePoiAt, activePoiScreen } = useViewer(host)
@@ -93,6 +94,7 @@ function onPointerUp(e: PointerEvent) {
 
       <p v-if="poi.editMode" class="overlay hint">點模型表面新增標記 · 拖曳仍可轉動視角</p>
 
+      <StepSubtitle />
       <PoiCard :screen="activePoiScreen" />
       <ExplodeSlider />
       <LoadProgress />
