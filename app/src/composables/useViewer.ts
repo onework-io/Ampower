@@ -7,6 +7,8 @@ import { PARTS } from '@/data/parts'
 import { useViewerStore } from '@/stores/viewer'
 import { usePoiStore } from '@/stores/poi'
 import { PoiLayer } from '@/three/PoiLayer'
+import { createTechGrid, type TechGrid } from '@/three/techGrid'
+import { Box3 } from 'three'
 
 /** 爆炸係數每幀趨近目標值的比例，讓拖曳滑桿時是滑順的而非跳動 */
 const EASE = 0.15
@@ -24,6 +26,7 @@ export function useViewer(host: Ref<HTMLElement | null>) {
   let kit: SceneKit | null = null
   let registry: PartRegistry | null = null
   let poiLayer: PoiLayer | null = null
+  let techGrid: TechGrid | null = null
   let currentFactor = 0
   const scratch = new Vector3()
 
@@ -56,6 +59,7 @@ export function useViewer(host: Ref<HTMLElement | null>) {
     kit.frame(framingBox(loaded, kit.root))
     kit.root.updateMatrixWorld(true)
     registry = new PartRegistry(loaded)
+    installTechGrid(loaded)
     applyAll()
 
     const partObjects = new Map<string, Object3D>(loaded.map((l) => [l.def.id, l.object]))
@@ -77,6 +81,37 @@ export function useViewer(host: Ref<HTMLElement | null>) {
         registry?.setExplodeFactor(currentFactor)
       }
     })
+  }
+
+  /**
+   * 以科技風格線取代 ground.glb 的淺灰平面。
+   *
+   * 格線掛在原本地坪構件底下，側欄「地坪」的顯示切換因此照舊有效；
+   * 地坪屬於 site，不參與爆炸與進度過濾，也不影響框景。
+   * 必須在 PartRegistry 建立之後才加入，否則自訂 shader 材質會被
+   * 隔離用的透明度處理當成一般材質複製與改寫。
+   */
+  function installTechGrid(loaded: LoadedPart[]) {
+    const ground = loaded.find((l) => l.def.kind === 'site')
+    if (!ground || !kit) return
+
+    // 格線是地坪節點的子物件，座標必須是模型座標。
+    // setFromObject 拿到的是世界座標（已含 root 的置中位移），要換算回來。
+    const toModel = kit.root.getWorldPosition(new Vector3()).negate()
+    const groundBox = new Box3().setFromObject(ground.object).translate(toModel)
+    const top = groundBox.max.y
+
+    // 原本的淺灰平面整個關掉，只留下格線
+    ground.object.traverse((o) => {
+      if ((o as { isMesh?: boolean }).isMesh) o.visible = false
+    })
+
+    // 格線以設備群為中心淡出，而非以 170m 地坪自身的中心。
+    // framingBox 傳入 root 時回傳的就是模型座標，不需要再換算。
+    const center = framingBox(loaded, kit.root).getCenter(new Vector3())
+
+    techGrid = createTechGrid(top, { center })
+    ground.object.add(techGrid.group)
   }
 
   function applyAll() {
@@ -174,6 +209,8 @@ export function useViewer(host: Ref<HTMLElement | null>) {
     kit?.setFrameCallback(null)
     poiLayer?.disposeAll()
     poiLayer = null
+    techGrid?.dispose()
+    techGrid = null
     registry?.dispose()
     kit?.dispose()
     kit = null
